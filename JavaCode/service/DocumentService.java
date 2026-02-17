@@ -49,9 +49,11 @@ public class DocumentService {
         }
     }
 
-    private String generateContent(String templateContent, Map<String, String> data) {
-        String result = templateContent;
+    // NEW: Публичный метод для генерации контента (используется в BatchDocumentService)
+    public String generateContent(String templateContent, Map<String, String> data) {
+        if (templateContent == null) return "";
 
+        String result = templateContent;
         Pattern pattern = Pattern.compile("\\$\\{([^}]+)\\}");
         Matcher matcher = pattern.matcher(templateContent);
 
@@ -71,17 +73,17 @@ public class DocumentService {
     public List<DocumentDTO> getUserDocumentsDTO(User user) {
         List<Document> documents = documentRepository.findByUser(user);
         return documents.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+          .map(this::convertToDTO)
+          .collect(Collectors.toList());
     }
 
     private DocumentDTO convertToDTO(Document document) {
         return new DocumentDTO(
-                document.getId(),
-                document.getName(),
-                document.getTemplate() != null ? document.getTemplate().getName() : "No template",
-                document.getStatus(),
-                document.getCreatedAt()
+          document.getId(),
+          document.getName(),
+          document.getTemplate() != null ? document.getTemplate().getName() : "No template",
+          document.getStatus(),
+          document.getCreatedAt()
         );
     }
 }

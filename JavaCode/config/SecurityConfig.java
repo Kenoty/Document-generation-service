@@ -25,17 +25,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors().and()
-                .csrf().disable()
-                .authorizeHttpRequests(authz -> authz
-                        .anyRequest().permitAll() // Разрешаем все запросы
-                )
-                .formLogin().disable() // Отключаем form login
-                .httpBasic().disable() // Отключаем basic auth
-                .logout().disable(); // Отключаем logout
+          .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+          .csrf(csrf -> csrf.disable())
+          .authorizeHttpRequests(authz -> authz
+            .anyRequest().permitAll()
+          )
+          .formLogin(form -> form.disable())
+          .httpBasic(httpBasic -> httpBasic.disable())
+          .logout(logout -> logout.disable());
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
