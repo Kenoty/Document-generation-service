@@ -5,12 +5,12 @@ import com.model.Template;
 import com.model.User;
 import com.service.FileProcessingService;
 import com.service.TemplateService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
+import com.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,104 +21,159 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/templates")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@PreAuthorize("hasRole('USER')")
 public class TemplateController {
 
     private static final Logger logger = LoggerFactory.getLogger(TemplateController.class);
 
-    @Autowired
-    private TemplateService templateService;
+    private final TemplateService templateService;
+    private final FileProcessingService fileProcessingService;
+    private final UserService userService;
 
-    @Autowired
-    private FileProcessingService fileProcessingService;
-
-    @GetMapping
-    public ResponseEntity<?> getUserTemplates(HttpServletRequest request) {
-        try {
-            User user = getCurrentUser(request);
-            logger.info("Fetching templates for user: {}", user.getUsername());
-
-            List<TemplateDTO> templates = templateService.getUserTemplatesDTO(user);
-            logger.info("Found {} templates for user: {}", templates.size(), user.getUsername());
-
-            return ResponseEntity.ok(templates);
-        } catch (RuntimeException e) {
-            logger.error("Authentication error: {}", e.getMessage());
-            return ResponseEntity.status(401).body("Not authenticated");
-        }
+    public TemplateController(TemplateService templateService,
+                              FileProcessingService fileProcessingService,
+                              UserService userService) {
+        this.templateService = templateService;
+        this.fileProcessingService = fileProcessingService;
+        this.userService = userService;
     }
 
+    private User getCurrentUser(Authentication authentication) {
+        return userService.findByUsername(authentication.getName())
+                .orElseThrow();
+    }
+
+    // ✅ Получить шаблоны пользователя
+    @GetMapping
+    public ResponseEntity<?> getUserTemplates(Authentication authentication) {
+
+        User user = getCurrentUser(authentication);
+        logger.info("Fetching templates for user: {}", user.getUsername());
+
+        List<TemplateDTO> templates = templateService.getUserTemplatesDTO(user);
+
+        return ResponseEntity.ok(templates);
+    }
+
+    // ✅ Создать шаблон
     @PostMapping
     public ResponseEntity<?> createTemplate(
-            HttpServletRequest request,
+            Authentication authentication,
             @RequestBody Map<String, String> requestBody) {
 
-        try {
-            User user = getCurrentUser(request);
+        User user = getCurrentUser(authentication);
 
-            String name = requestBody.get("name");
-            String content = requestBody.get("content");
+        String name = requestBody.get("name");
+        String content = requestBody.get("content");
 
-            if (name == null || name.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Template name is required");
-            }
-            if (content == null || content.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Template content is required");
-            }
-
-            Map<String, String> fields = templateService.extractFieldsFromContent(content);
-            Template template = templateService.createTemplate(name, content, user, fields);
-
-            // Конвертируем в DTO перед возвратом
-            TemplateDTO templateDTO = convertToDTO(template);
-            return ResponseEntity.ok(templateDTO);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error creating template: " + e.getMessage());
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Template name is required");
         }
+
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Template content is required");
+        }
+
+        Map<String, String> fields = templateService.extractFieldsFromContent(content);
+        Template template = templateService.createTemplate(name, content, user, fields);
+
+        return ResponseEntity.ok(convertToDTO(template));
     }
 
+    // ✅ Альтернативный upload
     @PostMapping("/upload")
     public ResponseEntity<?> uploadTemplate(
-            HttpServletRequest request,
+            Authentication authentication,
             @RequestBody Map<String, String> requestBody) {
 
-        try {
-            User user = getCurrentUser(request);
+        User user = getCurrentUser(authentication);
 
-            String name = requestBody.get("name");
-            String content = requestBody.get("content");
+        String name = requestBody.get("name");
+        String content = requestBody.get("content");
 
-            if (name == null || name.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Template name is required");
-            }
-
-            Map<String, String> fields = templateService.extractFieldsFromContent(content);
-            Template template = templateService.createTemplate(name, content, user, fields);
-
-            TemplateDTO templateDTO = convertToDTO(template);
-            return ResponseEntity.ok(templateDTO);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error uploading template: " + e.getMessage());
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Template name is required");
         }
+
+        Map<String, String> fields = templateService.extractFieldsFromContent(content);
+        Template template = templateService.createTemplate(name, content, user, fields);
+
+        return ResponseEntity.ok(convertToDTO(template));
     }
 
-    private User getCurrentUser(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            throw new RuntimeException("Not authenticated");
+    // ✅ Обновить шаблон
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateTemplate(
+            @PathVariable Long id,
+            Authentication authentication,
+            @RequestBody Map<String, String> requestBody) {
+
+        User user = getCurrentUser(authentication);
+
+        String name = requestBody.get("name");
+        String content = requestBody.get("content");
+
+        Map<String, String> fields = templateService.extractFieldsFromContent(content);
+        Template updatedTemplate = templateService.updateTemplate(id, name, content, fields);
+
+        if (!updatedTemplate.getUser().getId().equals(user.getId())) {
+            return ResponseEntity.status(403).body("Access denied");
         }
 
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("Not authenticated");
+        return ResponseEntity.ok(convertToDTO(updatedTemplate));
+    }
+
+    // ✅ Удалить шаблон
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteTemplate(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        User user = getCurrentUser(authentication);
+
+        Optional<Template> templateOpt = templateService.getTemplateById(id);
+
+        if (templateOpt.isPresent()) {
+            Template template = templateOpt.get();
+
+            if (!template.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(403).body("Access denied");
+            }
         }
 
-        return user;
+        templateService.deleteTemplate(id);
+        return ResponseEntity.ok("Template deleted successfully");
+    }
+
+    // ✅ Загрузка DOCX
+    @PostMapping("/upload-docx")
+    public ResponseEntity<?> uploadDocxTemplate(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("name") String name) {
+
+        User user = getCurrentUser(authentication);
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Please select a file");
+        }
+
+        if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
+            return ResponseEntity.badRequest().body("Only DOCX files are allowed");
+        }
+
+        try {
+        String content = fileProcessingService.extractTextFromDocx(file);
+        Map<String, String> fields =
+                fileProcessingService.extractFieldsFromDocxContent(content);
+
+        Template template =
+                templateService.createTemplateFromDocx(name, file, user, fields);
+
+        return ResponseEntity.ok(convertToDTO(template));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error extracting content from DOCX file");
+        }
     }
 
     private TemplateDTO convertToDTO(Template template) {
@@ -133,93 +188,5 @@ public class TemplateController {
                 template.getOriginalFileName(),
                 template.getDocxFileContent()
         );
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateTemplate(
-            @PathVariable Long id,
-            HttpServletRequest request,
-            @RequestBody Map<String, String> requestBody) {
-
-        try {
-            User user = getCurrentUser(request);
-
-            String name = requestBody.get("name");
-            String content = requestBody.get("content");
-
-            Map<String, String> fields = templateService.extractFieldsFromContent(content);
-            Template updatedTemplate = templateService.updateTemplate(id, name, content, fields);
-
-            // Проверяем, принадлежит ли шаблон текущему пользователю
-            if (!updatedTemplate.getUser().getId().equals(user.getId())) {
-                return ResponseEntity.status(403).body("Access denied");
-            }
-
-            TemplateDTO templateDTO = convertToDTO(updatedTemplate);
-            return ResponseEntity.ok(templateDTO);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error updating template: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTemplate(@PathVariable Long id, HttpServletRequest request) {
-        try {
-            User user = getCurrentUser(request);
-
-            // Проверяем, принадлежит ли шаблон текущему пользователю
-            Optional<Template> templateOpt = templateService.getTemplateById(id);
-            if (templateOpt.isPresent()) {
-                Template template = templateOpt.get();
-                if (!template.getUser().getId().equals(user.getId())) {
-                    return ResponseEntity.status(403).body("Access denied");
-                }
-            }
-
-            templateService.deleteTemplate(id);
-            return ResponseEntity.ok("Template deleted successfully");
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error deleting template: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/upload-docx")
-    public ResponseEntity<?> uploadDocxTemplate(
-            HttpServletRequest request,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("name") String name) {
-
-        try {
-            User user = getCurrentUser(request);
-
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body("Please select a file");
-            }
-
-            if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
-                return ResponseEntity.badRequest().body("Only DOCX files are allowed");
-            }
-
-            // Извлекаем текст для предпросмотра
-            String content = fileProcessingService.extractTextFromDocx(file);
-            Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
-
-            // Сохраняем шаблон с оригинальным DOCX файлом
-            Template template = templateService.createTemplateFromDocx(name, file, user, fields);
-            TemplateDTO templateDTO = convertToDTO(template);
-
-            return ResponseEntity.ok(templateDTO);
-
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error uploading template: " + e.getMessage());
-        }
     }
 }
