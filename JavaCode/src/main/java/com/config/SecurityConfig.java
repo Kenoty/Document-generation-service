@@ -19,6 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.model.User;
+import com.repository.UserRepository;
 import com.service.UserService;
 
 import java.util.List;
@@ -28,10 +29,10 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-  private final UserService userService;
+  private final UserRepository userRepository;
 
-  public SecurityConfig(UserService userService) {
-      this.userService = userService;
+  public SecurityConfig(UserRepository userRepository) {
+      this.userRepository = userRepository;
   }
 
     @Bean
@@ -96,7 +97,7 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
       return username -> {
-          User user = userService.findByUsername(username)
+          User user = userRepository.findByUsername(username)
                   .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
           return org.springframework.security.core.userdetails.User
