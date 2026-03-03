@@ -21,7 +21,6 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/templates")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
-@PreAuthorize("hasRole('USER')")
 public class TemplateController {
 
     private static final Logger logger = LoggerFactory.getLogger(TemplateController.class);
@@ -45,6 +44,7 @@ public class TemplateController {
 
     // ✅ Получить шаблоны пользователя
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getUserTemplates(Authentication authentication) {
 
         User user = getCurrentUser(authentication);
@@ -57,6 +57,7 @@ public class TemplateController {
 
     // ✅ Создать шаблон
     @PostMapping
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> createTemplate(
             Authentication authentication,
             @RequestBody Map<String, String> requestBody) {
@@ -147,6 +148,7 @@ public class TemplateController {
 
     // ✅ Загрузка DOCX
     @PostMapping("/upload-docx")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> uploadDocxTemplate(
             Authentication authentication,
             @RequestParam("file") MultipartFile file,

@@ -22,7 +22,6 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/documents")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
-@PreAuthorize("hasRole('USER')")
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -80,6 +79,7 @@ public class DocumentController {
 
     // ✅ Пакетная генерация
     @PostMapping("/batch/generate")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> generateBatch(
             Authentication authentication,
             @RequestBody BatchGenerationRequest batchRequest) {
@@ -93,6 +93,7 @@ public class DocumentController {
 
     // ✅ Скачать ZIP
     @GetMapping("/batch/download/{batchId}")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> downloadBatch(@PathVariable String batchId) throws Exception {
 
         Path zipPath = Paths.get("temp", batchId + ".zip");
@@ -113,6 +114,7 @@ public class DocumentController {
 
     // ✅ Получить прогресс batch
     @GetMapping("/batch/progress/{batchId}")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getProgress(@PathVariable String batchId) {
         BatchGenerationResult result = batchDocumentService.getProgress(batchId);
         return ResponseEntity.ok(result);
@@ -160,6 +162,7 @@ public class DocumentController {
 
     // ✅ Экспорт DOCX
     @GetMapping("/{id}/export-docx")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> exportDocumentToDocx(
             Authentication authentication,
             @PathVariable Long id) {
@@ -205,6 +208,7 @@ public class DocumentController {
 
     // ✅ Экспорт PDF
     @GetMapping("/{id}/export-pdf")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> exportDocumentToPdf(
             Authentication authentication,
             @PathVariable Long id) {
