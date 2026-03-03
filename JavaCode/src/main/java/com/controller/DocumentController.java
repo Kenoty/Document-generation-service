@@ -49,6 +49,7 @@ public class DocumentController {
 
     // ✅ Получить документы пользователя
     @GetMapping
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> getUserDocuments(Authentication authentication) {
 
         User user = getCurrentUser(authentication);
@@ -59,6 +60,7 @@ public class DocumentController {
 
     // ✅ Генерация документа
     @PostMapping("/generate")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Document> generateDocument(
             Authentication authentication,
             @RequestBody Map<String, Object> requestBody) {
@@ -122,6 +124,7 @@ public class DocumentController {
 
     // ✅ Экспорт текста
     @GetMapping("/{id}/export")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<String> exportDocument(
             Authentication authentication,
             @PathVariable Long id) {
@@ -140,6 +143,7 @@ public class DocumentController {
 
     // ✅ Удалить документ
     @DeleteMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> deleteDocument(
             Authentication authentication,
             @PathVariable Long id) {

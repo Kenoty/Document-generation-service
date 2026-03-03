@@ -56,18 +56,14 @@ public class SecurityConfig {
                         "/api/auth/login",
                         "/api/auth/register"
                 ).anonymous()
-            
+        
                 .requestMatchers(
                         "/api/auth/logout",
-                        "/api/auth/current-user",
-                        "/api/auth/refresh-session"
+                        "/api/auth/current-user"
                 ).hasRole("USER")
-            
-                .requestMatchers("/api/documents/**").hasRole("USER")
-                .requestMatchers("/api/templates/**").hasRole("USER")
-            
+        
                 .anyRequest().authenticated()
-            )
+        )
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable());
 

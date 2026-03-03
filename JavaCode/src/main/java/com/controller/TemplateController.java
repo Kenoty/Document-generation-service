@@ -83,6 +83,7 @@ public class TemplateController {
 
     // ✅ Альтернативный upload
     @PostMapping("/upload")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> uploadTemplate(
             Authentication authentication,
             @RequestBody Map<String, String> requestBody) {
@@ -104,6 +105,7 @@ public class TemplateController {
 
     // ✅ Обновить шаблон
     @PutMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> updateTemplate(
             @PathVariable Long id,
             Authentication authentication,
@@ -126,6 +128,7 @@ public class TemplateController {
 
     // ✅ Удалить шаблон
     @DeleteMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<?> deleteTemplate(
             @PathVariable Long id,
             Authentication authentication) {
