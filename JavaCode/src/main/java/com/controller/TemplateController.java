@@ -6,15 +6,18 @@ import com.model.User;
 import com.service.FileProcessingService;
 import com.service.TemplateService;
 import com.service.UserService;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +28,7 @@ import java.util.Optional;
 public class TemplateController {
 
     private static final Logger logger = LoggerFactory.getLogger(TemplateController.class);
+    private static final int GUEST_TEMPLATE_LIMIT = 5;
 
     private final TemplateService templateService;
     private final FileProcessingService fileProcessingService;
@@ -38,38 +42,51 @@ public class TemplateController {
         this.userService = userService;
     }
 
+    private boolean isGuest(Authentication authentication) {
+        return authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken;
+    }
+
     private User getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
+        if (isGuest(authentication)) {
             return null;
         }
         return userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    @SuppressWarnings("unchecked")
+    private List<TemplateDTO> getGuestTemplates(HttpSession session) {
+        List<TemplateDTO> templates =
+                (List<TemplateDTO>) session.getAttribute("guest_templates");
+        if (templates == null) {
+            templates = new ArrayList<>();
+        }
+        return templates;
+    }
+
+    // ✅ Список шаблонов — для всех
     @GetMapping
-    public ResponseEntity<?> getUserTemplates(Authentication authentication) {
-        // ✅ Правильная проверка анонима
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
-            logger.info("Anonymous user requesting templates — returning empty list");
-            return ResponseEntity.ok(List.of());
+    public ResponseEntity<?> getUserTemplates(Authentication authentication,
+                                              HttpSession session) {
+        if (isGuest(authentication)) {
+            logger.info("Guest requesting templates, session: {}", session.getId());
+            return ResponseEntity.ok(getGuestTemplates(session));
         }
 
         User user = getCurrentUser(authentication);
         logger.info("Fetching templates for user: {}", user.getUsername());
-
         List<TemplateDTO> templates = templateService.getUserTemplatesDTO(user);
         return ResponseEntity.ok(templates);
     }
 
-    // ✅ Только авторизованные
+    // ✅ Создание шаблона — для всех
     @PostMapping
     public ResponseEntity<?> createTemplate(
             Authentication authentication,
-            @RequestBody Map<String, String> requestBody) {
-
-        User user = getCurrentUser(authentication);
+            @RequestBody Map<String, String> requestBody,
+            HttpSession session) {
 
         String name = requestBody.get("name");
         String content = requestBody.get("content");
@@ -77,36 +94,105 @@ public class TemplateController {
         if (name == null || name.trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Template name is required");
         }
-
         if (content == null || content.trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Template content is required");
         }
 
         Map<String, String> fields = templateService.extractFieldsFromContent(content);
+        User user = getCurrentUser(authentication);
 
-        Template template =
-                templateService.createTemplate(name, content, user, fields);
+        if (user == null) {
+            List<TemplateDTO> guestTemplates = getGuestTemplates(session);
 
+            if (guestTemplates.size() >= GUEST_TEMPLATE_LIMIT) {
+                return ResponseEntity.badRequest().body(
+                    "Guest limit reached (" + GUEST_TEMPLATE_LIMIT
+                    + " templates). Register to create more.");
+            }
+
+            long tempId = -(guestTemplates.size() + 1);
+            TemplateDTO dto = new TemplateDTO(
+                    tempId, name, null, content, fields,
+                    LocalDateTime.now(), LocalDateTime.now(),
+                    null, null
+            );
+            guestTemplates.add(dto);
+            session.setAttribute("guest_templates", guestTemplates);
+
+            return ResponseEntity.ok(dto);
+        }
+
+        Template template = templateService.createTemplate(name, content, user, fields);
         return ResponseEntity.ok(convertToDTO(template));
     }
 
-    // ✅ Только авторизованные
+    // ✅ Загрузка DOCX — для всех
+    @PostMapping("/upload-docx")
+    public ResponseEntity<?> uploadDocxTemplate(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("name") String name,
+            HttpSession session) {
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Please select a file");
+        }
+        if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
+            return ResponseEntity.badRequest().body("Only DOCX files are allowed");
+        }
+
+        User user = getCurrentUser(authentication);
+
+        try {
+            String content = fileProcessingService.extractTextFromDocx(file);
+            Map<String, String> fields =
+                    fileProcessingService.extractFieldsFromDocxContent(content);
+
+            if (user == null) {
+                List<TemplateDTO> guestTemplates = getGuestTemplates(session);
+
+                if (guestTemplates.size() >= GUEST_TEMPLATE_LIMIT) {
+                    return ResponseEntity.badRequest().body(
+                        "Guest limit reached (" + GUEST_TEMPLATE_LIMIT
+                        + " templates). Register to create more.");
+                }
+
+                long tempId = -(guestTemplates.size() + 1);
+                TemplateDTO dto = new TemplateDTO(
+                        tempId, name, "Guest template", content, fields,
+                        LocalDateTime.now(), LocalDateTime.now(),
+                        file.getOriginalFilename(), null
+                );
+                guestTemplates.add(dto);
+                session.setAttribute("guest_templates", guestTemplates);
+
+                return ResponseEntity.ok(dto);
+            }
+
+            Template template =
+                    templateService.createTemplateFromDocx(name, file, user, fields);
+            return ResponseEntity.ok(convertToDTO(template));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body("Error extracting content from DOCX file");
+        }
+    }
+
+    // ✅ Обновление — только авторизованные
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> updateTemplate(
             @PathVariable Long id,
             Authentication authentication,
             @RequestBody Map<String, String> requestBody) {
 
         User user = getCurrentUser(authentication);
-
         String name = requestBody.get("name");
         String content = requestBody.get("content");
 
-        Map<String, String> fields =
-                templateService.extractFieldsFromContent(content);
-
-        Template updatedTemplate =
-                templateService.updateTemplate(id, name, content, fields);
+        Map<String, String> fields = templateService.extractFieldsFromContent(content);
+        Template updatedTemplate = templateService.updateTemplate(id, name, content, fields);
 
         if (!updatedTemplate.getUser().getId().equals(user.getId())) {
             return ResponseEntity.status(403).body("Access denied");
@@ -115,80 +201,26 @@ public class TemplateController {
         return ResponseEntity.ok(convertToDTO(updatedTemplate));
     }
 
-    // ✅ Только авторизованные
+    // ✅ Удаление — только авторизованные
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> deleteTemplate(
             @PathVariable Long id,
             Authentication authentication) {
 
         User user = getCurrentUser(authentication);
 
-        Optional<Template> templateOpt =
-                templateService.getTemplateById(id);
-
+        Optional<Template> templateOpt = templateService.getTemplateById(id);
         if (templateOpt.isPresent()) {
             Template template = templateOpt.get();
-
             if (!template.getUser().getId().equals(user.getId())) {
                 return ResponseEntity.status(403).body("Access denied");
             }
         }
 
         templateService.deleteTemplate(id);
-
         return ResponseEntity.ok("Template deleted successfully");
     }
-
-    @PostMapping("/upload-docx")
-public ResponseEntity<?> uploadDocxTemplate(
-        Authentication authentication,
-        @RequestParam("file") MultipartFile file,
-        @RequestParam("name") String name) {
-
-    User user = getCurrentUser(authentication);
-
-    if (file.isEmpty()) {
-        return ResponseEntity.badRequest().body("Please select a file");
-    }
-
-    if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
-        return ResponseEntity.badRequest().body("Only DOCX files are allowed");
-    }
-
-    // ✅ Ограничение для анонима
-    if (user == null) {
-        try {
-            String content = fileProcessingService.extractTextFromDocx(file);
-            Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
-
-            // Возвращаем извлечённые данные БЕЗ сохранения в БД
-            return ResponseEntity.ok(Map.of(
-                "name", name,
-                "content", content,
-                "fields", fields,
-                "saved", false,
-                "message", "Template preview. Register to save permanently."
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body("Error extracting content from DOCX file");
-        }
-    }
-
-    // Авторизованный — полное сохранение
-    try {
-        String content = fileProcessingService.extractTextFromDocx(file);
-        Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
-
-        Template template =
-                templateService.createTemplateFromDocx(name, file, user, fields);
-
-        return ResponseEntity.ok(convertToDTO(template));
-    } catch (Exception e) {
-        return ResponseEntity.badRequest()
-                .body("Error extracting content from DOCX file");
-    }
-}
 
     private TemplateDTO convertToDTO(Template template) {
         return new TemplateDTO(
