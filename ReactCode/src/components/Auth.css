@@ -182,3 +182,20 @@ body {
         font-size: 1.5rem;
     }
 }
+
+.btn-guest {
+    margin-top: 12px;
+    background-color: transparent;
+    color: #6c757d;
+    border: 1px solid #6c757d;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-guest:hover {
+    background-color: #6c757d;
+    color: #ffffff;
+}

@@ -13,31 +13,33 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         axios.defaults.baseURL = 'http://localhost:8080';
-        axios.defaults.withCredentials = true; // Важно для работы с сессиями
+        axios.defaults.withCredentials = true;
 
-        // Проверяем текущего пользователя при загрузке
+        // Глобальный перехватчик — при 401 сбрасываем пользователя
+        const interceptor = axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response?.status === 401) {
+                    setUser(null);
+                }
+                return Promise.reject(error);
+            }
+        );
+
         checkCurrentUser();
+
+        // Очистка при размонтировании
+        return () => axios.interceptors.response.eject(interceptor);
     }, []);
 
     const checkCurrentUser = async () => {
         try {
-            console.log('Checking current user...');
             const response = await axios.get('/api/auth/current-user');
-            console.log('User authenticated:', response.data);
             setUser(response.data);
         } catch (error) {
-            console.log('User not authenticated, attempting to refresh session...');
-
-            // Пытаемся обновить сессию перед полным сбросом
-            try {
-                await axios.post('/api/auth/refresh-session');
-                const retryResponse = await axios.get('/api/auth/current-user');
-                setUser(retryResponse.data);
-                console.log('Session refreshed successfully');
-            } catch (refreshError) {
-                console.log('Session refresh failed, user not authenticated');
-                setUser(null);
-            }
+            // 401 — просто не авторизован, это нормально
+            console.log('User not authenticated');
+            setUser(null);
         } finally {
             setLoading(false);
         }
@@ -45,30 +47,19 @@ export function AuthProvider({ children }) {
 
     const login = async (username, password) => {
         try {
-            console.log('Attempting login for:', username);
             const response = await axios.post('/api/auth/login', {
                 username,
                 password
             });
 
-            const userData = response.data;
-            console.log('Login successful:', userData);
-            setUser(userData);
-
+            setUser(response.data);
             return { success: true };
         } catch (error) {
-            console.error('Login failed:', error.response?.data);
-
-            // Очищаем возможные остаточные сессии
-            try {
-                await axios.post('/api/auth/logout');
-            } catch (logoutError) {
-                // Игнорируем ошибки логаута
-            }
-
             return {
                 success: false,
-                message: error.response?.data || 'Login failed'
+                message: error.response?.data?.message
+                    || error.response?.data
+                    || 'Login failed'
             };
         }
     };
@@ -80,14 +71,14 @@ export function AuthProvider({ children }) {
                 password
             });
 
-            const userData = response.data;
-            setUser(userData);
-
+            setUser(response.data);
             return { success: true };
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data || 'Registration failed'
+                message: error.response?.data?.message
+                    || error.response?.data
+                    || 'Registration failed'
             };
         }
     };

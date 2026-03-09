@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import './Auth.css'; // Создадим отдельный файл стилей для auth
+import './Auth.css';
 
 function Login() {
     const [username, setUsername] = useState('');
@@ -32,6 +32,10 @@ function Login() {
         }
 
         setLoading(false);
+    };
+
+    const handleGuestLogin = () => {
+        navigate('/templates');
     };
 
     return (
@@ -75,6 +79,14 @@ function Login() {
                         {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </form>
+
+                {/* Кнопка "Войти как гость" */}
+                <button
+                    onClick={handleGuestLogin}
+                    className="btn btn-guest btn-full"
+                >
+                    Continue as Guest
+                </button>
 
                 <div className="auth-footer">
                     <p className="text-center">
