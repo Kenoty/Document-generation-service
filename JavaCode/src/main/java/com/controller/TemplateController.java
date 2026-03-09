@@ -139,57 +139,56 @@ public class TemplateController {
         return ResponseEntity.ok("Template deleted successfully");
     }
 
-    // ✅ Только авторизованные
     @PostMapping("/upload-docx")
-    public ResponseEntity<?> uploadDocxTemplate(
-            Authentication authentication,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("name") String name) {
+public ResponseEntity<?> uploadDocxTemplate(
+        Authentication authentication,
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("name") String name) {
 
-        User user = getCurrentUser(authentication);
+    User user = getCurrentUser(authentication);
 
-        if (user == null) {
-            try {
-                String content = fileProcessingService.extractTextFromDocx(file);
-                Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
-    
-                return ResponseEntity.ok(Map.of(
-                    "name", name,
-                    "content", content,
-                    "fields", fields,
-                    "saved", false,
-                    "message", "Template preview. Register to save permanently."
-                ));
-            } catch (Exception e) {
-                return ResponseEntity.badRequest()
-                        .body("Error extracting content from DOCX file");
-            
+    if (file.isEmpty()) {
+        return ResponseEntity.badRequest().body("Please select a file");
+    }
 
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Please select a file");
-        }
+    if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
+        return ResponseEntity.badRequest().body("Only DOCX files are allowed");
+    }
 
-        if (!file.getOriginalFilename().toLowerCase().endsWith(".docx")) {
-            return ResponseEntity.badRequest().body("Only DOCX files are allowed");
-        }
-
+    // ✅ Ограничение для анонима
+    if (user == null) {
         try {
-            String content =
-                    fileProcessingService.extractTextFromDocx(file);
+            String content = fileProcessingService.extractTextFromDocx(file);
+            Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
 
-            Map<String, String> fields =
-                    fileProcessingService.extractFieldsFromDocxContent(content);
-
-            Template template =
-                    templateService.createTemplateFromDocx(name, file, user, fields);
-
-            return ResponseEntity.ok(convertToDTO(template));
-
+            // Возвращаем извлечённые данные БЕЗ сохранения в БД
+            return ResponseEntity.ok(Map.of(
+                "name", name,
+                "content", content,
+                "fields", fields,
+                "saved", false,
+                "message", "Template preview. Register to save permanently."
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body("Error extracting content from DOCX file");
         }
     }
+
+    // Авторизованный — полное сохранение
+    try {
+        String content = fileProcessingService.extractTextFromDocx(file);
+        Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
+
+        Template template =
+                templateService.createTemplateFromDocx(name, file, user, fields);
+
+        return ResponseEntity.ok(convertToDTO(template));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest()
+                .body("Error extracting content from DOCX file");
+    }
+}
 
     private TemplateDTO convertToDTO(Template template) {
         return new TemplateDTO(
