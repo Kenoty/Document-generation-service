@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import './Auth.css';
 
 function Register() {
@@ -11,7 +11,6 @@ function Register() {
     const [loading, setLoading] = useState(false);
 
     const { register } = useAuth();
-    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,13 +35,11 @@ function Register() {
 
         const result = await register(username, password);
 
-        if (result.success) {
-            navigate('/');
-        } else {
+        if (!result.success) {
             setError(result.message);
+            setLoading(false);
         }
-
-        setLoading(false);
+        // Не делаем navigate — GuestRoute сам редиректнет на /
     };
 
     return (

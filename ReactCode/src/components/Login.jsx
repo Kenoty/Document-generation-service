@@ -25,13 +25,11 @@ function Login() {
 
         const result = await login(username, password);
 
-        if (result.success) {
-            navigate('/');
-        } else {
+        if (!result.success) {
             setError(result.message);
+            setLoading(false);
         }
-
-        setLoading(false);
+        // Не делаем navigate — GuestRoute сам редиректнет на /
     };
 
     const handleGuestLogin = () => {
@@ -80,7 +78,6 @@ function Login() {
                     </button>
                 </form>
 
-                {/* Кнопка "Войти как гость" */}
                 <button
                     onClick={handleGuestLogin}
                     className="btn btn-guest btn-full"
