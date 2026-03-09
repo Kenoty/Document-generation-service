@@ -22,6 +22,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/documents")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@PreAuthorize("hasRole('USER')") // ✅ ВЕСЬ КОНТРОЛЛЕР ТОЛЬКО ДЛЯ USER
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -44,12 +45,11 @@ public class DocumentController {
 
     private User getCurrentUser(Authentication authentication) {
         return userService.findByUsername(authentication.getName())
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     // ✅ Получить документы пользователя
     @GetMapping
-    @PreAuthorize("permitAll()")
     public ResponseEntity<?> getUserDocuments(Authentication authentication) {
 
         User user = getCurrentUser(authentication);
@@ -60,7 +60,6 @@ public class DocumentController {
 
     // ✅ Генерация документа
     @PostMapping("/generate")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<Document> generateDocument(
             Authentication authentication,
             @RequestBody Map<String, Object> requestBody) {
@@ -81,12 +80,12 @@ public class DocumentController {
 
     // ✅ Пакетная генерация
     @PostMapping("/batch/generate")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> generateBatch(
             Authentication authentication,
             @RequestBody BatchGenerationRequest batchRequest) {
 
         User user = getCurrentUser(authentication);
+
         BatchGenerationResult result =
                 batchDocumentService.generateBatch(batchRequest, user);
 
@@ -95,7 +94,6 @@ public class DocumentController {
 
     // ✅ Скачать ZIP
     @GetMapping("/batch/download/{batchId}")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> downloadBatch(@PathVariable String batchId) throws Exception {
 
         Path zipPath = Paths.get("temp", batchId + ".zip");
@@ -116,7 +114,6 @@ public class DocumentController {
 
     // ✅ Получить прогресс batch
     @GetMapping("/batch/progress/{batchId}")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> getProgress(@PathVariable String batchId) {
         BatchGenerationResult result = batchDocumentService.getProgress(batchId);
         return ResponseEntity.ok(result);
@@ -124,7 +121,6 @@ public class DocumentController {
 
     // ✅ Экспорт текста
     @GetMapping("/{id}/export")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<String> exportDocument(
             Authentication authentication,
             @PathVariable Long id) {
@@ -143,7 +139,6 @@ public class DocumentController {
 
     // ✅ Удалить документ
     @DeleteMapping("/{id}")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<?> deleteDocument(
             Authentication authentication,
             @PathVariable Long id) {
@@ -166,7 +161,6 @@ public class DocumentController {
 
     // ✅ Экспорт DOCX
     @GetMapping("/{id}/export-docx")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> exportDocumentToDocx(
             Authentication authentication,
             @PathVariable Long id) {
@@ -183,36 +177,37 @@ public class DocumentController {
         Template template = document.getTemplate();
         Map<String, String> data = document.getData();
 
-        byte[] docxContent;
-
         try {
-        if (template.getDocxFileContent() != null) {
+            byte[] docxContent;
 
-            MultipartFile templateFile = new InMemoryMultipartFile(
-                    template.getOriginalFileName(),
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    template.getDocxFileContent()
-            );
+            if (template.getDocxFileContent() != null) {
 
-            docxContent = fileProcessingService.generateDocxFromTemplate(templateFile, data);
-        } else {
-            docxContent = fileProcessingService.generateDocxFromTextTemplate(
-                    template.getContent(), data);
-        }
+                MultipartFile templateFile = new InMemoryMultipartFile(
+                        template.getOriginalFileName(),
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        template.getDocxFileContent()
+                );
 
-        return ResponseEntity.ok()
-                .header("Content-Type",
-                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-                .header("Content-Disposition",
-                        "attachment; filename=\"" + document.getName() + ".docx\"")
-                .body(docxContent); } catch (Exception e) {
+                docxContent = fileProcessingService.generateDocxFromTemplate(templateFile, data);
+            } else {
+                docxContent = fileProcessingService.generateDocxFromTextTemplate(
+                        template.getContent(), data);
+            }
+
+            return ResponseEntity.ok()
+                    .header("Content-Type",
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                    .header("Content-Disposition",
+                            "attachment; filename=\"" + document.getName() + ".docx\"")
+                    .body(docxContent);
+
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
     // ✅ Экспорт PDF
     @GetMapping("/{id}/export-pdf")
-    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<byte[]> exportDocumentToPdf(
             Authentication authentication,
             @PathVariable Long id) {
@@ -227,14 +222,15 @@ public class DocumentController {
         }
 
         try {
-        byte[] pdfContent =
-                fileProcessingService.generatePdfDocument(document.getGeneratedContent());
+            byte[] pdfContent =
+                    fileProcessingService.generatePdfDocument(document.getGeneratedContent());
 
-        return ResponseEntity.ok()
-                .header("Content-Type", "application/pdf")
-                .header("Content-Disposition",
-                        "attachment; filename=\"" + document.getName() + ".pdf\"")
-                .body(pdfContent);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/pdf")
+                    .header("Content-Disposition",
+                            "attachment; filename=\"" + document.getName() + ".pdf\"")
+                    .body(pdfContent);
+
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

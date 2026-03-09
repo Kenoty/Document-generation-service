@@ -61,6 +61,8 @@ public class FileProcessingService {
             throw new IOException("Failed to extract text from DOCX file: " + e.getMessage(), e);
         }
 
+        logger.info(content.toString());
+
         return content.toString();
     }
 

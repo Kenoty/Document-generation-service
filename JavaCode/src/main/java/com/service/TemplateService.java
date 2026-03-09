@@ -111,6 +111,8 @@ public class TemplateService {
             String content = fileProcessingService.extractTextFromDocx(file);
             template.setContent(content);
 
+            System.out.println(template.toString());
+
             return templateRepository.save(template);
         } catch (Exception e) {
             throw new RuntimeException("Error creating template from DOCX: " + e.getMessage(), e);

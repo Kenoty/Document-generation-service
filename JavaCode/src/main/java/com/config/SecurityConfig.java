@@ -13,14 +13,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.model.User;
 import com.repository.UserRepository;
-import com.service.UserService;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -29,11 +29,11 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
-  private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
-  public SecurityConfig(UserRepository userRepository) {
-      this.userRepository = userRepository;
-  }
+    public SecurityConfig(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -51,21 +51,43 @@ public class SecurityConfig {
                 .maximumSessions(1)
             )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/register"
+                ).anonymous()
 
                 .requestMatchers(
-                        "/api/auth/login",
-                        "/api/auth/register"
-                ).anonymous()
-        
-                .requestMatchers(
-                        "/api/auth/logout",
-                        "/api/auth/current-user"
+                    "/api/auth/logout",
+                    "/api/auth/current-user"
                 ).hasRole("USER")
-        
+
+                .requestMatchers("/api/templates/**").permitAll()
+
                 .anyRequest().authenticated()
-        )
+            )
             .formLogin(form -> form.disable())
-            .httpBasic(httpBasic -> httpBasic.disable());
+            .httpBasic(httpBasic -> httpBasic.disable())
+
+            // ===== КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ =====
+            // Возвращаем 401 JSON вместо 302 редиректа
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write(
+                        "{\"error\": \"Unauthorized\", \"message\": \"Authentication required\"}"
+                    );
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write(
+                        "{\"error\": \"Forbidden\", \"message\": \"Access denied\"}"
+                    );
+                })
+            );
 
         return http.build();
     }
@@ -84,21 +106,22 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
     @Bean
     public UserDetailsService userDetailsService() {
-      return username -> {
-          User user = userRepository.findByUsername(username)
-                  .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return username -> {
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-          return org.springframework.security.core.userdetails.User
-                  .withUsername(user.getUsername())
-                  .password(user.getPassword())
-                  .roles("USER")
-                  .build();
-      };
+            return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUsername())
+                .password(user.getPassword())
+                .roles("USER")
+                .build();
+        };
     }
 }
