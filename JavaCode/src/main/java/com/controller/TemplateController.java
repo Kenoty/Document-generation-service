@@ -149,8 +149,21 @@ public class TemplateController {
         User user = getCurrentUser(authentication);
 
         if (user == null) {
-            user = new User("anon", "efje@gmail.com", "1234567890");
-        }
+            try {
+                String content = fileProcessingService.extractTextFromDocx(file);
+                Map<String, String> fields = fileProcessingService.extractFieldsFromDocxContent(content);
+    
+                return ResponseEntity.ok(Map.of(
+                    "name", name,
+                    "content", content,
+                    "fields", fields,
+                    "saved", false,
+                    "message", "Template preview. Register to save permanently."
+                ));
+            } catch (Exception e) {
+                return ResponseEntity.badRequest()
+                        .body("Error extracting content from DOCX file");
+            
 
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("Please select a file");
