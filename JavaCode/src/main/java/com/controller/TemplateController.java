@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,18 +39,19 @@ public class TemplateController {
     }
 
     private User getCurrentUser(Authentication authentication) {
-        if (authentication == null) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
             return null;
         }
         return userService.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // ✅ Открыт всем — аноним тоже может смотреть
     @GetMapping
     public ResponseEntity<?> getUserTemplates(Authentication authentication) {
-        System.out.println("Method is in use");
-        if (authentication == null) {
+        // ✅ Правильная проверка анонима
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
             logger.info("Anonymous user requesting templates — returning empty list");
             return ResponseEntity.ok(List.of());
         }

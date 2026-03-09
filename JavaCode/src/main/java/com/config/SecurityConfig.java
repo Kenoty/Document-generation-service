@@ -51,25 +51,27 @@ public class SecurityConfig {
                 .maximumSessions(1)
             )
             .authorizeHttpRequests(auth -> auth
+                // ✅ permitAll вместо anonymous
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/register"
-                ).anonymous()
+                ).permitAll()
 
                 .requestMatchers(
                     "/api/auth/logout",
                     "/api/auth/current-user"
                 ).hasRole("USER")
 
+                // Шаблоны — всем
                 .requestMatchers("/api/templates/**").permitAll()
+
+                // Гостевые эндпоинты
+                .requestMatchers("/api/guest/**").permitAll()
 
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form.disable())
             .httpBasic(httpBasic -> httpBasic.disable())
-
-            // ===== КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ =====
-            // Возвращаем 401 JSON вместо 302 редиректа
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
