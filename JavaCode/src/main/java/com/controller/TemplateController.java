@@ -149,7 +149,7 @@ public class TemplateController {
         User user = getCurrentUser(authentication);
 
         if (user == null) {
-            user = new User("anon", null, "1234567890");
+            user = new User("anon", "efje@gmail.com", "1234567890");
         }
 
         if (file.isEmpty()) {
