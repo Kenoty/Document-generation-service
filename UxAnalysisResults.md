@@ -144,7 +144,7 @@
 - Редактор шаблона представлял собой простое текстовое поле
 - Пользователь должен был самостоятельно искать и запоминать, какие поля используются
 
-![Before](https://github.com/Kenoty/Document-generationg-service/diagrams/images/UxAnalysisResults_screen1.1.png)
+![Before](https://github.com/Kenoty/Document-generationg-service/diagrams/images/UxAnalysisResultsScreen1.png)
 
 **После:**
 - Справа от редактора отображается список всех полей, извлеченных из шаблона
