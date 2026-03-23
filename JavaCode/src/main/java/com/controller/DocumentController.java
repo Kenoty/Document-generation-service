@@ -235,4 +235,40 @@ public class DocumentController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    // Предпросмотр DOCX без сохранения
+    @PostMapping("/preview-docx")
+    public ResponseEntity<byte[]> previewDocx(
+            Authentication authentication,
+            @RequestBody Map<String, Object> requestBody
+    ) {
+        Long templateId = Long.valueOf(requestBody.get("templateId").toString());
+        Map<String, String> data = (Map<String, String>) requestBody.get("data");
+
+        Template template = templateService.getTemplateById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template not found"));
+
+        try {
+            byte[] docxContent;
+
+            if (template.getDocxFileContent() != null) {
+                MultipartFile templateFile = new InMemoryMultipartFile(
+                        template.getOriginalFileName(),
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        template.getDocxFileContent()
+                );
+                docxContent = fileProcessingService.generateDocxFromTemplate(templateFile, data);
+            } else {
+                docxContent = fileProcessingService.generateDocxFromTextTemplate(
+                        template.getContent(), data);
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                    .body(docxContent);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

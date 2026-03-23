@@ -849,3 +849,172 @@ body {
 .gap-4 {
   gap: 1rem;
 }
+
+/* DOCX Viewer Styles */
+.docx-viewer {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+}
+
+.docx-viewer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.docx-viewer td, .docx-viewer th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.docx-viewer img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Scrollbar for viewer */
+.modal-content::-webkit-scrollbar,
+.docx-viewer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.docx-viewer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.docx-viewer::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.docx-viewer::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Field highlight animation */
+@keyframes highlightFlash {
+  0% { background-color: #fef3c7; border-color: #f59e0b; }
+  100% { background-color: transparent; border-color: #e2e8f0; }
+}
+
+.field-highlight {
+  animation: highlightFlash 1s ease-out;
+}
+
+/* DOCX Viewer enhancements */
+.docx-viewer .variable {
+  background-color: #fef3c7;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.docx-viewer .variable:hover {
+  background-color: #fde68a;
+  box-shadow: 0 0 0 2px #f59e0b;
+}
+
+/* DOCX Viewer Styles */
+.docx-viewer {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.docx-viewer > * {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.docx-viewer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  table-layout: fixed;
+}
+
+.docx-viewer td, .docx-viewer th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  word-break: break-word;
+}
+
+.docx-viewer img {
+  max-width: 100%;
+  height: auto;
+}
+
+.docx-viewer p {
+  margin: 0 0 1em 0;
+  word-break: break-word;
+}
+
+/* Стили для выделения переменных */
+.docx-viewer .variable-highlight {
+  background-color: #fef3c7;
+  transition: background-color 0.3s;
+}
+
+/* Scrollbar для просмотрщика */
+.modal-content::-webkit-scrollbar,
+.docx-viewer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.docx-viewer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.docx-viewer::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.docx-viewer::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Анимация подсветки */
+@keyframes fieldHighlight {
+  0% { background-color: #fef3c7; border-color: #f59e0b; }
+  100% { background-color: transparent; border-color: #e2e8f0; }
+}
+
+.field-highlight {
+  animation: fieldHighlight 1s ease-out;
+}
+
+.field-highlight {
+  background-color: #3b82f6 !important;
+  color: inherit !important;
+  transition: background-color 0.2s;
+}
+
+.docx-viewer img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
+
+.docx-viewer .image-container {
+  max-width: 100%;
+  margin: 10px 0;
+}
+
+.docx-viewer .image-container img {
+  max-width: 100%;
+  height: auto;
+}

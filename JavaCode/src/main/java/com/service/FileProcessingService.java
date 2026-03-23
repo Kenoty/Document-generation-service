@@ -289,8 +289,11 @@ public class FileProcessingService {
 
         while (matcher.find()) {
             String variableName = matcher.group(1);
-            String value = data.getOrDefault(variableName, "");
-            result = result.replace("${" + variableName + "}", value);
+            String value = data.get(variableName);
+
+            if (value != null && !value.trim().isEmpty()) {
+                result = result.replace("${" + variableName + "}", value);
+            }
         }
 
         return result;

@@ -9,6 +9,7 @@ import com.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -234,5 +235,20 @@ public class TemplateController {
                 template.getOriginalFileName(),
                 template.getDocxFileContent()
         );
+    }
+
+    // Предпросмотр шаблона DOCX
+    @GetMapping("/{id}/preview-docx")
+    public ResponseEntity<byte[]> previewTemplateDocx(@PathVariable Long id) {
+        Template template = templateService.getTemplateById(id)
+                .orElseThrow(() -> new RuntimeException("Template not found"));
+
+        if (template.getDocxFileContent() != null) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                    .body(template.getDocxFileContent());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
