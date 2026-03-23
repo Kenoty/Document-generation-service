@@ -161,14 +161,15 @@
 - В главном меню "Templates" были две отдельные кнопки: "New Template" и "Upload DOCX"
 - Пользователь переходил в раздел, затем выбирал способ создания
 
-**[СКРИН 2 ДО: Главное меню Templates с двумя кнопками]**
+![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen2.1.png)
+![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen2.2.png)
 
 **После:**
 - Кнопка "New Template" открывает модальное окно
 - Внутри окна есть две вкладки/зоны: "Create from text" и "Upload DOCX"
 - Все способы создания шаблона собраны в одном месте
 
-**[СКРИН 2 ПОСЛЕ: Окно создания шаблона с текстовым редактором и кнопкой Upload DOCX]**
+![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen2.3.png)
 
 ---
 
@@ -178,14 +179,14 @@
 - В списке шаблонов были только кнопки "Edit" и "Delete"
 - Для генерации документа нужно было перейти в раздел "Documents" и выбрать шаблон из выпадающего списка
 
-**[СКРИН 3 ДО: Список шаблонов без кнопки Generate]**
+![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen3.1.png)
 
 **После:**
 - К каждому шаблону в списке добавлена кнопка "Generate"
 - При нажатии открывается форма генерации с автоматически выбранным шаблоном
 - Пользователь заполняет поля и сразу получает документ
 
-**[СКРИН 3 ПОСЛЕ: Список шаблонов с кнопкой Generate]**
+![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen3.2.png)
 
 ---
 
