@@ -162,6 +162,7 @@
 - Пользователь переходил в раздел, затем выбирал способ создания
 
 ![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen2.1.png)
+
 ![](https://github.com/Kenoty/Document-generationg-service/blob/main/diagrams/images/UxAnalysisResults_screen2.2.png)
 
 **После:**
